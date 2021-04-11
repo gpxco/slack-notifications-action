@@ -1,0 +1,24 @@
+name: 'Workflow Slack Notifications'
+description: 'Slack notifications for Github Actions Workflows'
+inputs:
+  webhookUrl:
+    description: 'The Slack Webhook URL'
+    required: true
+  githubToken:
+    description: 'The workflow Github API token. Required if "starting" == FALSE'
+    required: false
+  channel:
+    description: 'The Slack channel to send the notification too'
+    required: false
+  username:
+    description: 'The Slack username to post as'
+    required: false
+  icon:
+    description: 'The icon emoji or URL for posting username'
+    required: false
+  starting:
+    description: 'Whether or not this is the start of the workflow'
+    required: false
+runs:
+  using: 'node12'
+  main: 'index.js'
