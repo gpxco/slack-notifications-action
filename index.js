@@ -97,7 +97,7 @@ async function main() {
 
   // Action inputs
   slackWebhookUrl = core.getInput('webhookUrl', { required: true });
-  const slackChannel = core.getInput('channel');
+  const slackChannel = core.getInput('channel') || '#app-log';
   const slackUsername = core.getInput('username') || 'Github Actions';
   const slackIcon = core.getInput('icon') || ':octocat:';
   const workflowIsStarting = core.getInput('starting') == 'true';
