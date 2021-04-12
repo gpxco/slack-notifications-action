@@ -105,6 +105,10 @@ async function main() {
 
   // Define the default Slack message structure
   const shortSha = github.context.sha.substr(0, 6);
+  let repositoryLink = `https://github.com/${github.context.payload.repository.full_name}`;
+  if (github.context.ref.indexOf('refs/heads/') === 0) {
+    repositoryLink += `/tree/${github.context.ref.replace('refs/heads/', '')}`;
+  }
   let slackMessage = {
     'channel': slackChannel,
     'username': slackUsername,
@@ -114,7 +118,7 @@ async function main() {
         'author_name': github.context.actor,
         'author_icon': github.context.payload.sender.avatar_url,
         'text': null,
-        'footer': `<https://github.com/${github.context.payload.repository.full_name}/${github.context.ref}|${github.context.payload.repository.full_name} @ ${shortSha}>`,
+        'footer': `<${repositoryLink}|${github.context.payload.repository.full_name} @ ${shortSha}>`,
         'footer_icon': 'https://github.githubassets.com/favicon.ico'
       }
     ],
