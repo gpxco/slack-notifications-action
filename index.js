@@ -7,8 +7,46 @@ const os = require('os');
 
 let slackWebhookUrl;
 
+function getBaseSlackMessage() {
+
+  const slackChannel = core.getInput('channel') || '#app-log';
+  const slackUsername = core.getInput('username') || 'Github Actions';
+  const slackIcon = core.getInput('icon') || ':octocat:';
+
+  let actorAvatarUrl = `https://avatars.githubusercontent.com/${process.env.GITHUB_ACTOR}`;
+  if ('payload' in github.context &&
+      'sender' in github.context.payload &&
+      'avatar_url' in github.context.payload.sender
+  ) {
+    actorAvatarUrl = github.context.payload.sender.avatar_url;
+  }
+
+  let repositoryLink = `https://github.com/${process.env.GITHUB_REPOSITORY}`;
+  if (github.context.ref.indexOf('refs/heads/') === 0) {
+    repositoryLink += `/tree/${github.context.ref.replace('refs/heads/', '')}`;
+  }
+
+  const shortSha = github.context.sha.substr(0, 6);
+
+  return {
+    'channel': slackChannel,
+    'username': slackUsername,
+    'icon_emoji': slackIcon,
+    'attachments': [
+      {
+        'author_name': process.env.GITHUB_ACTOR,
+        'author_icon': actorAvatarUrl,
+        'text': null,
+        'footer': `<${repositoryLink}|${process.env.GITHUB_REPOSITORY} @ ${shortSha}>`,
+        'footer_icon': 'https://github.githubassets.com/favicon.ico'
+      }
+    ],
+    'mrkdwn': true
+  };
+}
+
 function getWorkflowSlackLink() {
-  return `<https://github.com/${github.context.payload.repository.full_name}/actions/runs/${github.context.runId}|${github.context.workflow}>`;
+  return `<https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${github.context.runId}|${github.context.workflow}>`;
 }
 
 function sendStartingMessage(slackMessage) {
@@ -26,7 +64,7 @@ function sendSuccessMessage(slackMessage) {
 
 function sendFailedMessage(slackMessage, failedId, failedJob, failedStep) {
   const workflowLink = getWorkflowSlackLink();
-  slackMessage.attachments[0]['text'] = `Workflow *${workflowLink} failed* during job <https://github.com/${github.context.payload.repository.full_name}/runs/${failedId}|${failedJob}> at step \`${failedStep}\``;
+  slackMessage.attachments[0]['text'] = `Workflow *${workflowLink} failed* during job <https://github.com/${process.env.GITHUB_REPOSITORY}/runs/${failedId}|${failedJob}> at step \`${failedStep}\``;
   slackMessage.attachments[0]['color'] = '#e60000';
   return sendSlackMessage(slackMessage);
 }
@@ -97,33 +135,11 @@ async function main() {
 
   // Action inputs
   slackWebhookUrl = core.getInput('webhookUrl', { required: true });
-  const slackChannel = core.getInput('channel') || '#app-log';
-  const slackUsername = core.getInput('username') || 'Github Actions';
-  const slackIcon = core.getInput('icon') || ':octocat:';
   const workflowIsStarting = core.getInput('starting') == 'true';
   core.setSecret(slackWebhookUrl);
 
   // Define the default Slack message structure
-  const shortSha = github.context.sha.substr(0, 6);
-  let repositoryLink = `https://github.com/${github.context.payload.repository.full_name}`;
-  if (github.context.ref.indexOf('refs/heads/') === 0) {
-    repositoryLink += `/tree/${github.context.ref.replace('refs/heads/', '')}`;
-  }
-  let slackMessage = {
-    'channel': slackChannel,
-    'username': slackUsername,
-    'icon_emoji': slackIcon,
-    'attachments': [
-      {
-        'author_name': github.context.actor,
-        'author_icon': github.context.payload.sender.avatar_url,
-        'text': null,
-        'footer': `<${repositoryLink}|${github.context.payload.repository.full_name} @ ${shortSha}>`,
-        'footer_icon': 'https://github.githubassets.com/favicon.ico'
-      }
-    ],
-    'mrkdwn': true
-  };
+  let slackMessage = getBaseSlackMessage();
 
   // Starting message
   if (workflowIsStarting) {
@@ -136,9 +152,11 @@ async function main() {
 
   // Get the data for the workflow jobs
   const octokit = github.getOctokit(githubToken);
+  const githubRepositoryOwner = process.env.GITHUB_REPOSITORY.split('/')[0];
+  const githubRepositoryName = process.env.GITHUB_REPOSITORY.split('/')[1];
   const workflowJobsData = await octokit.rest.actions.listJobsForWorkflowRun({
-    'owner': github.context.payload.repository.owner.name,
-    'repo': github.context.payload.repository.name,
+    'owner': githubRepositoryOwner,
+    'repo': githubRepositoryName,
     'run_id': github.context.runId,
   });
 
